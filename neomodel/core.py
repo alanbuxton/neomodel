@@ -128,7 +128,7 @@ def install_labels(cls, quiet=True, stdout=None):
                 )
             try:
                 db.cypher_query(
-                    f"""CREATE CONSTRAINT constraint_unique_{cls.__label__}_{db_property} 
+                    f"""CREATE CONSTRAINT constraint_unique_{cls.__label__}_{db_property}
                                 FOR (n:{cls.__label__}) REQUIRE n.{db_property} IS UNIQUE"""
                 )
             except ClientError as e:
@@ -277,6 +277,19 @@ class StructuredNode(NodeBase):
 
     If you want to create your own abstract classes set:
         __abstract_node__ = True
+
+    If you want to create create a class where the class name must not be a
+    label (e.g. to support some cases of multiple inheritance), set:
+        __class_name_is_label__ = False
+
+
+        class RedStoneCircle(Red, Stone, Circle):
+            __class_name_is_label__ = False
+
+    means that `RedStoneCircle` will be instantiated every time a node is found that has the
+    labels `Red`, `Stone` and `Circle`, but `RedStoneCircle` itself will never be used
+    as a label.
+
     """
 
     # static properties
@@ -605,11 +618,13 @@ class StructuredNode(NodeBase):
 
         :return: list
         """
-        return [
-            scls.__label__
-            for scls in cls.mro()
-            if hasattr(scls, "__label__") and not hasattr(scls, "__abstract_node__")
-        ]
+        labels = []
+        for scls in cls.mro():
+            if hasattr(scls, "__class_name_is_label__") and cls.__class_name_is_label__ is False:
+                continue
+            if hasattr(scls, "__label__") and not hasattr(scls, "__abstract_node__"):
+                labels.append(scls.__label__)
+        return labels
 
     @classmethod
     def inherited_optional_labels(cls):
