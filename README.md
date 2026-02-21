@@ -59,6 +59,53 @@ See the [documentation](https://neomodel.readthedocs.io/en/latest/configuration.
 * List object resolution from Cypher was creating "2-depth" lists for no apparent reason. This release fixes this so that, for example "RETURN collect(node)" will return the nodes directly as a list in the result. In other words, you can extract this list at `results[0][0]` instead of `results[0][0][0]`
 * See more breaking changes in the [documentation](http://neomodel.readthedocs.org)
 
+# Fork: `multiple_inheritance` branch
+
+This branch adds support for a `__class_name_is_label__ = False` flag on `StructuredNode` subclasses.
+
+## Motivation
+
+In some multiple inheritance scenarios, you may want a concrete class to act purely as a
+resolver — matching nodes that carry a combination of parent labels — without adding its
+own class name as a label in the database.
+
+For example, given:
+
+```python
+class Square(StructuredNode):
+    name = StringProperty()
+
+class Yellow(StructuredNode):
+    pass
+
+class YellowSquare(Square, Yellow):
+    __class_name_is_label__ = False  # node is stored as :Square:Yellow, not :YellowSquare:Square:Yellow
+```
+
+A saved `YellowSquare` node will have labels `Square` and `Yellow` only, making it
+retrievable via raw Cypher queries or `Square.nodes.filter(...)` using just those labels.
+Querying via `YellowSquare.nodes` will return no results (since no `YellowSquare` label
+exists in the database), which is the intended behaviour.
+
+Contrast with the default (or `__class_name_is_label__ = True`), where the class name
+is included as a label as usual:
+
+```python
+class RedSquare(Square, Red):
+    __class_name_is_label__ = True  # default behaviour — stored as :RedSquare:Square:Red
+```
+
+## Implementation notes
+
+- `inherited_labels()` is modified in both `neomodel/sync_/node.py` and `neomodel/async_/node.py`
+  to skip the concrete class name when `__class_name_is_label__ is False`.
+- Tests are in `test/test_multiple_inheritance_models.py` (sync) and
+  `test/async_/test_multiple_inheritance_models.py` (async).
+- The async code in this branch was written directly rather than generated via
+  `bin/make-unasync` (the upstream's preferred workflow), since the change is small and
+  isolated. If this is ever contributed upstream, it should be applied to `async_/node.py`
+  first and then transpiled.
+
 # Installation
 
 Install from pypi (recommended):
