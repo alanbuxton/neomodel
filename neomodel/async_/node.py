@@ -543,11 +543,13 @@ class AsyncStructuredNode(NodeBase):
 
         :return: list
         """
-        return [
-            scls.__label__
-            for scls in cls.mro()
-            if hasattr(scls, "__label__") and not hasattr(scls, "__abstract_node__")
-        ]
+        labels = []
+        for scls in cls.mro():
+            if hasattr(scls, "__class_name_is_label__") and cls.__class_name_is_label__ is False:
+                continue
+            if hasattr(scls, "__label__") and not hasattr(scls, "__abstract_node__"):
+                labels.append(scls.__label__)
+        return labels
 
     @classmethod
     def inherited_optional_labels(cls: Any) -> list[str]:
