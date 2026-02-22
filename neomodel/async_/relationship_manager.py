@@ -160,7 +160,8 @@ class AsyncRelationshipManager(object):
             **self.definition,
         )
         q = (
-            f"MATCH (them), (us) WHERE {await adb.get_id_method()}(them)=$them and {await adb.get_id_method()}(us)=$self "
+            f"MATCH (them) WHERE {await adb.get_id_method()}(them)=$them "
+            f"MATCH (us) WHERE {await adb.get_id_method()}(us)=$self "
             "MERGE" + new_rel
         )
 
@@ -284,7 +285,8 @@ class AsyncRelationshipManager(object):
         new_node_element_id = await adb.parse_element_id(new_node.element_id)
         result, _ = await self.source.cypher(
             f"""
-                MATCH (us), (old) WHERE {await adb.get_id_method()}(us)=$self and {await adb.get_id_method()}(old)=$old
+                MATCH (us) WHERE {await adb.get_id_method()}(us)=$self
+                MATCH (old) WHERE {await adb.get_id_method()}(old)=$old
                 MATCH {old_rel} RETURN r
             """,
             {"old": old_node_element_id},
@@ -298,8 +300,9 @@ class AsyncRelationshipManager(object):
         # remove old relationship and create new one
         new_rel = _rel_merge_helper(lhs="us", rhs="new", ident="r2", **self.definition)
         q = (
-            "MATCH (us), (old), (new) "
-            f"WHERE {await adb.get_id_method()}(us)=$self and {await adb.get_id_method()}(old)=$old and {await adb.get_id_method()}(new)=$new "
+            f"MATCH (us) WHERE {await adb.get_id_method()}(us)=$self "
+            f"MATCH (old) WHERE {await adb.get_id_method()}(old)=$old "
+            f"MATCH (new) WHERE {await adb.get_id_method()}(new)=$new "
             "MATCH " + old_rel
         )
         q += " MERGE" + new_rel
@@ -322,7 +325,8 @@ class AsyncRelationshipManager(object):
         """
         rel = _rel_helper(lhs="a", rhs="b", ident="r", **self.definition)
         q = f"""
-                MATCH (a), (b) WHERE {await adb.get_id_method()}(a)=$self and {await adb.get_id_method()}(b)=$them
+                MATCH (a) WHERE {await adb.get_id_method()}(a)=$self
+                MATCH (b) WHERE {await adb.get_id_method()}(b)=$them
                 MATCH {rel} DELETE r
             """
         await self.source.cypher(
